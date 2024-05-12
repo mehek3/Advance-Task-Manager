@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Task Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        form {
+            margin-bottom: 1em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.5em;
+            border: 1px solid #ccc;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced Task Manager</h1>
+
+    <form id="new-task-form">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required>
+        <label for="isCompleted">Is Completed:</label>
+        <input type="checkbox" id="isCompleted" name="isCompleted">
+        <label for="assignee">Assignee:</label>
+        <input type="text" id="assignee" name="assignee" required>
+        <button type="submit">Add New Task</button>
+    </form>
+
+    <button id="get-all-tasks">Get all tasks</button>
+    <button id="show-incomplete-tasks">Show incomplete tasks</button>
+    <input type="text" id="assignee-filter" placeholder="Filter by assignee">
+
+    <table id="tasks-table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Is Completed</th>
+                <th>Assignee</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        const tasksUrl = 'https://jsonplaceholder.typicode.com/todos';
+
+        // Display all tasks
+        function displayTasks(tasks) {
+            const tbody = document.querySelector('#tasks-table tbody');
+            tbody.innerHTML = '';
+            for (const task of tasks) {
+                const row = `
+                    <tr>
+                        <td>${task.title}</td>
+                        <td>${task.completed ? 'Yes' : 'No'}</td>
+                        <td>${task.assignee || ''}</td>
+                        <td>
+                            <button data-id="${task.id}" class="update">Update</button>
+                            <button data-id="${task.id}" class="delete">Delete</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            }
+            const updateButtons = document.querySelectorAll('.update');
+            for (const button of updateButtons) {
+                button.addEventListener('click', updateTask);
+            }
+            const deleteButtons = document.querySelectorAll('.delete');
+            for (const button of deleteButtons) {
+                button.addEventListener('click', deleteTask);
+            }
+        }
+
+        // Add new task
+        function addTask(task) {
+            return axios.post(tasksUrl, task)
+                .then(response => response.data)
+                .catch(error => console.error('Error adding task:', error));
+        }
+
+        // Update existing task
+        function updateTask(event) {
+            const id = event.target.dataset.id;
+            const title = prompt('Enter the updated title:');
+            const isCompleted = confirm('Is the task completed?');
+            const assignee = prompt('Enter the assignee name:');
+            const updatedTask = { id, title, completed: isCompleted, assignee };
+            axios.put(`${tasksUrl}/${id}`, updatedTask)
+                .then(response => console.log('Task updated:', response.data))
+                .catch(error => console.error('Error updating task:', error));
+        }
+
+        // Delete existing task
+        function deleteTask(event) {
+            const id = event.target.dataset.id;
+            axios.delete(`${tasksUrl}/${id}`)
+                .then(() => console.log('Task deleted:', id))
+                .catch(error => console.error('Error deleting task:', error));
+        }
+
+        // Get all tasks
+        function getAllTasks() {
+            axios.get(tasksUrl)
+                .then(response => displayTasks(response.data))
+                .catch(error => console.error('Error getting tasks:', error));
+        }
+
+        // Get incomplete tasks
+        function getIncompleteTasks() {
+            axios.get(`${tasksUrl}?completed=false`)
+                .then(response => displayTasks(response.data))
+                .catch(error => console.error('Error getting tasks:', error));
+        }
+
+        // Add event listeners
+        document.querySelector('#new-task-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            const title = document.querySelector('#title').value;
+            const isCompleted = document.querySelector('#isCompleted').checked;
+            const assignee = document.querySelector('#assignee').value;
+            const task = { title, completed: isCompleted, assignee };
+            addTask(task);
+        });
+        document.querySelector('#get-all-tasks').addEventListener('click', getAllTasks);
+        document.querySelector('#show-incomplete-tasks').addEventListener('click', getIncompleteTasks);
+        document.querySelector('#assignee-filter').addEventListener('input', (event) => {
+            const assignee = event.target.value.toLowerCase();
+            const filteredTasks = axios.get(tasksUrl)
+                .then(response => response.data.filter(task => task.assignee.toLowerCase().includes(assignee)))
+                .catch(error => console.error('Error filtering tasks:', error));
+            displayTasks(filteredTasks);
+        });
+    </script>
+</body>
+</html>
